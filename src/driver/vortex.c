@@ -126,25 +126,15 @@ static inline void tiny_wait(uint count) {
 static inline void reset_panels(void) {
 
 #ifdef ADDR_CLK
-    // Type 5 reset: shift in all zeros
-    gpio_clear_bits((1<<ADDR__EN) | (1<<ADDR_DAT) | (1<<ADDR_CLK));
-    tiny_wait(CLOCK_WAITS * 4);
-    
-    // Shift in 32 zero bits
-    for (int i = 0; i < 32; ++i) {
-        gpio_clear_bits((1<<ADDR_DAT));
-        tiny_wait(CLOCK_WAITS * 2);
-        gpio_set_bits((1<<ADDR_CLK));
-        tiny_wait(CLOCK_WAITS * 2);
-        gpio_clear_bits((1<<ADDR_CLK));
-        tiny_wait(CLOCK_WAITS * 2);
+    // flush the address register
+    gpio_clear_bits((1<<ADDR__EN) | (1<<ADDR_DAT));
+    tiny_wait(10);
+    for (int i = 0; i < PANEL_FIELD_HEIGHT; ++i) {
+        gpio_set_pin(ADDR_CLK);
+        tiny_wait(10);
+        gpio_clear_pin(ADDR_CLK);
+        tiny_wait(10);
     }
-    
-    // Latch
-    gpio_set_bits((1<<ADDR__EN));
-    tiny_wait(CLOCK_WAITS * 5);
-    gpio_clear_bits((1<<ADDR__EN));
-    tiny_wait(CLOCK_WAITS * 3);
 #endif
 
 }
@@ -444,43 +434,20 @@ static void init_angles(void) {}
 
 #endif
 
-#ifdef ADDR_CLK
+#ifndef ADDR_CLK
 
-// Type 5 shift register addressing for MW5566P
+// classic HUB75E direct row address
 static void set_matrix_row(uint row) {
-    // Clear data and clock lines
-    gpio_clear_bits((1<<ADDR_DAT) | (1<<ADDR_CLK));
-    tiny_wait(CLOCK_WAITS * 2);
-    
-    // Shift in 5-bit row address, MSB first
-    for (int bit = 4; bit >= 0; bit--) {
-        // Set data bit
-        if (row & (1 << bit)) {
-            gpio_set_bits((1<<ADDR_DAT));
-        } else {
-            gpio_clear_bits((1<<ADDR_DAT));
-        }
-        
-        tiny_wait(CLOCK_WAITS * 2);
-        
-        // Clock rising edge
-        gpio_set_bits((1<<ADDR_CLK));
-        tiny_wait(CLOCK_WAITS * 3);
-        
-        // Clock falling edge
-        gpio_clear_bits((1<<ADDR_CLK));
-        tiny_wait(CLOCK_WAITS * 2);
-    }
-    
-    // Clear data line
-    gpio_clear_bits((1<<ADDR_DAT));
-    tiny_wait(CLOCK_WAITS * 2);
-    
-    // Latch pulse
-    gpio_set_bits((1<<ADDR__EN));
-    tiny_wait(CLOCK_WAITS * 5);
-    gpio_clear_bits((1<<ADDR__EN));
-    tiny_wait(CLOCK_WAITS * 3);
+
+    uint a = PANEL_FIELD_HEIGHT - 1 - row;
+    uint32_t rowbits = ((a & 0x01) << ROW_A)
+                     | ((a & 0x02) << (ROW_B-1))
+                     | ((a & 0x04) << (ROW_C-2))
+                     | ((a & 0x08) << (ROW_D-3))
+                     | ((a & 0x10) << (ROW_E-4));
+    gpio_clear_bits(((~rowbits) & ROW_MASK));
+    gpio_set_bits(rowbits & ROW_MASK);
+    gpio_clear_bits(RGB_STROBE_MASK);
 }
 
 #else
@@ -696,5 +663,4 @@ int main(int argc, char** argv) {
 
     return 0;
 }
-
 
