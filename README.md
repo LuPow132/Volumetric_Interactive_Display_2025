@@ -85,7 +85,7 @@ gamepad is used to control the demos.
 
 On the Raspberry Pi, clone the repository:
 
-    git clone https://github.com/AncientJames/multivox.git
+    git clone https://github.com/LuPow132/Volumetric_Interactive_Display_2025.git
 
 Configure the project for your hardware:
 
