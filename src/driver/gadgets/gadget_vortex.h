@@ -18,8 +18,8 @@
 #define RGB_1_R2 16
 
 #define ADDR_CLK 4
-#define ADDR_DAT 18
-#define ADDR__EN 15
+#define ADDR_DAT 15
+#define ADDR__EN 18
 #define ADDR__EN_MASK (1<<ADDR__EN)
 
 #define RGB_BLANK 11
