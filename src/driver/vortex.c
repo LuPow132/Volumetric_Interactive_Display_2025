@@ -438,16 +438,39 @@ static void init_angles(void) {}
 
 // classic HUB75E direct row address
 static void set_matrix_row(uint row) {
-
-    uint a = PANEL_FIELD_HEIGHT - 1 - row;
-    uint32_t rowbits = ((a & 0x01) << ROW_A)
-                     | ((a & 0x02) << (ROW_B-1))
-                     | ((a & 0x04) << (ROW_C-2))
-                     | ((a & 0x08) << (ROW_D-3))
-                     | ((a & 0x10) << (ROW_E-4));
-    gpio_clear_bits(((~rowbits) & ROW_MASK));
-    gpio_set_bits(rowbits & ROW_MASK);
-    gpio_clear_bits(RGB_STROBE_MASK);
+    // Clear data and clock lines
+    gpio_clear_bits((1<<ADDR_DAT) | (1<<ADDR_CLK));
+    tiny_wait(CLOCK_WAITS * 2);
+    
+    // Shift in 5-bit row address, MSB first
+    for (int bit = 4; bit >= 0; bit--) {
+        // Set data bit
+        if (row & (1 << bit)) {
+            gpio_set_bits((1<<ADDR_DAT));
+        } else {
+            gpio_clear_bits((1<<ADDR_DAT));
+        }
+        
+        tiny_wait(CLOCK_WAITS * 2);
+        
+        // Clock rising edge
+        gpio_set_bits((1<<ADDR_CLK));
+        tiny_wait(CLOCK_WAITS * 3);
+        
+        // Clock falling edge
+        gpio_clear_bits((1<<ADDR_CLK));
+        tiny_wait(CLOCK_WAITS * 2);
+    }
+    
+    // Clear data line
+    gpio_clear_bits((1<<ADDR_DAT));
+    tiny_wait(CLOCK_WAITS * 2);
+    
+    // Latch pulse
+    gpio_set_bits((1<<ADDR__EN));
+    tiny_wait(CLOCK_WAITS * 5);
+    gpio_clear_bits((1<<ADDR__EN));
+    tiny_wait(CLOCK_WAITS * 3);
 }
 
 #else
