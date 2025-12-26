@@ -89,7 +89,7 @@ On the Raspberry Pi, clone the repository:
 
 Configure the project for your hardware:
 
-    cd multivox
+    cd Volumetric_Interactive_Display_2025
     mkdir build
     cd build
     cmake -DMULTIVOX_GADGET=vortex ..
