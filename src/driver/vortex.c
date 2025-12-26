@@ -126,15 +126,25 @@ static inline void tiny_wait(uint count) {
 static inline void reset_panels(void) {
 
 #ifdef ADDR_CLK
-    // flush the address register
-    gpio_clear_bits((1<<ADDR__EN) | (1<<ADDR_DAT));
-    tiny_wait(10);
-    for (int i = 0; i < PANEL_FIELD_HEIGHT; ++i) {
-        gpio_set_pin(ADDR_CLK);
-        tiny_wait(10);
-        gpio_clear_pin(ADDR_CLK);
-        tiny_wait(10);
+    // Type 5 reset: shift in all zeros
+    gpio_clear_bits((1<<ADDR__EN) | (1<<ADDR_DAT) | (1<<ADDR_CLK));
+    tiny_wait(CLOCK_WAITS * 4);
+    
+    // Shift in 32 zero bits
+    for (int i = 0; i < 32; ++i) {
+        gpio_clear_bits((1<<ADDR_DAT));
+        tiny_wait(CLOCK_WAITS * 2);
+        gpio_set_bits((1<<ADDR_CLK));
+        tiny_wait(CLOCK_WAITS * 2);
+        gpio_clear_bits((1<<ADDR_CLK));
+        tiny_wait(CLOCK_WAITS * 2);
     }
+    
+    // Latch
+    gpio_set_bits((1<<ADDR__EN));
+    tiny_wait(CLOCK_WAITS * 5);
+    gpio_clear_bits((1<<ADDR__EN));
+    tiny_wait(CLOCK_WAITS * 3);
 #endif
 
 }
