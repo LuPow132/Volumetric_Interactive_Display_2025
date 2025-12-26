@@ -444,9 +444,9 @@ static void init_angles(void) {}
 
 #endif
 
-#ifndef ADDR_CLK
+#ifdef ADDR_CLK
 
-// classic HUB75E direct row address
+// Type 5 shift register addressing for MW5566P
 static void set_matrix_row(uint row) {
     // Clear data and clock lines
     gpio_clear_bits((1<<ADDR_DAT) | (1<<ADDR_CLK));
