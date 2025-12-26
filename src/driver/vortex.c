@@ -456,10 +456,28 @@ static void set_matrix_row(uint row) {
 static uint current_shift_row = 1;
 
 static inline void address_shift_left(const uint lsb) {
-    tiny_wait(CLOCK_WAITS * 2);
-    gpio_set_bits((1<<ADDR_CLK) | (lsb<<ADDR_DAT));
-    tiny_wait(CLOCK_WAITS * 2);
-    gpio_clear_bits((1<<ADDR_CLK) | (1<<ADDR_DAT));
+    // 1. Enable Serial Input (Matches 'SetBits(bk_)' in Code 1)
+    gpio_set_bits(ADDR__EN_MASK);
+    tiny_wait(CLOCK_WAITS);
+
+    // 2. Set Data Bit (Matches 'SetBits(din_)' logic)
+    if (lsb) {
+        gpio_set_bits(1<<ADDR_DAT);
+    } else {
+        gpio_clear_bits(1<<ADDR_DAT);
+    }
+    tiny_wait(CLOCK_WAITS);
+
+    // 3. Pulse Clock (Matches 'SetBits(dck_)' then 'ClearBits(dck_)')
+    gpio_set_bits(1<<ADDR_CLK);
+    tiny_wait(CLOCK_WAITS * 2); // Make pulse slightly longer for safety
+    gpio_clear_bits(1<<ADDR_CLK);
+
+    // 4. Disable Serial Input (Matches 'ClearBits(bk_)')
+    gpio_clear_bits(ADDR__EN_MASK);
+    
+    // Clean up Data line (Optional, but good practice)
+    gpio_clear_bits(1<<ADDR_DAT);
 }
 
 static void set_matrix_row(uint row) {
