@@ -3,13 +3,19 @@
 
 #define SPIN_SYNC 1
 
-#define RGB_0_B1 7
-#define RGB_0_G1 27
-#define RGB_0_R1 11
-#define RGB_0_B2 10
-#define RGB_0_G2 9
-#define RGB_0_R2 8
+// --- HZELLER "REGULAR" MAPPING (Chain 0) ---
+// These match the standard wiring.md for Raspberry Pi
+#define RGB_0_R1 17
+#define RGB_0_G1 18
+#define RGB_0_B1 22
+#define RGB_0_R2 23
+#define RGB_0_G2 24
+#define RGB_0_B2 25
 
+// --- SECOND CHAIN (Not available in standard Regular wiring) ---
+// "Regular" wiring supports only 1 chain. To use 2 panels, 
+// chain them in series and drive them both using RGB_0.
+// These are left as placeholders or custom assignments.
 #define RGB_1_B1 6
 #define RGB_1_G1 5
 #define RGB_1_R1 12
@@ -17,14 +23,22 @@
 #define RGB_1_G2 13
 #define RGB_1_R2 19
 
-#define ADDR_CLK 22
-#define ADDR_DAT 23
-#define ADDR__EN 24
+// --- ADDRESSING ---
+// Mapped to Hzeller A, B, C. 
+// NOTE: Standard HUB75 uses Parallel A/B/C/D, not CLK/DAT serial.
+// You may need to modify your main code logic to treat these as parallel bits.
+#define ADDR_CLK 7   // Mapped to Pin A
+#define ADDR_DAT 8   // Mapped to Pin B
+#define ADDR__EN 9   // Mapped to Pin C
+// If you use a 32-row panel, you also need Pin D (GPIO 10).
 #define ADDR__EN_MASK (1<<ADDR__EN)
 
-#define RGB_BLANK 18
-#define RGB_CLOCK 17
-#define RGB_STROBE 4
+// --- CONTROL PINS ---
+// Matched to Hzeller defaults
+#define RGB_BLANK  27  // OE (Output Enable)
+#define RGB_CLOCK  11  // CLK (Clock)
+#define RGB_STROBE 4   // LAT (Latch)
+
 #define RGB_BLANK_MASK (1<<RGB_BLANK)
 #define RGB_CLOCK_MASK (1<<RGB_CLOCK)
 #define RGB_STROBE_MASK (1<<RGB_STROBE)
