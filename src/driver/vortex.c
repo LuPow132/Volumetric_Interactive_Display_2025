@@ -453,32 +453,37 @@ static void set_matrix_row(uint row) {
 #else
 
 // shift register address
-static uint current_shift_row = 1;
+static int last_shift_row = -1;
 
-static inline void address_shift_left(const uint lsb) {
+static inline void address_shift_bit(const uint bit_value) {
+    // Enable serial input (BK high)
+    gpio_set_bits(1 << ADDR_BK);
+    
+    // Set data bit
+    if (bit_value) {
+        gpio_set_bits(1 << ADDR_DAT);
+    } else {
+        gpio_clear_bits(1 << ADDR_DAT);
+    }
+    
+    // Clock pulse (longer duration like the working code)
+    gpio_set_bits(1 << ADDR_CLK);
     tiny_wait(CLOCK_WAITS * 2);
-    gpio_set_bits((1<<ADDR_CLK) | (lsb<<ADDR_DAT));
-    tiny_wait(CLOCK_WAITS * 2);
-    gpio_clear_bits((1<<ADDR_CLK) | (1<<ADDR_DAT));
+    gpio_set_bits(1 << ADDR_CLK);  // Extra set for longer pulse
+    gpio_clear_bits(1 << ADDR_CLK);
+    
+    // Disable serial input to prevent unwanted bits
+    gpio_clear_bits(1 << ADDR_BK);
 }
 
 static void set_matrix_row(uint row) {
-    if (row < current_shift_row) {
-        int leading_zeros = PANEL_FIELD_HEIGHT - row - 1;
-        int flush = leading_zeros - current_shift_row;
-
-        for (int i = 0; i < flush; ++i) {
-            address_shift_left(0);
-        }
-        address_shift_left(1);
-
-        current_shift_row = 0;
-    }
-
-    for (; current_shift_row < row; ++current_shift_row) {
-        address_shift_left(0);
-    }
-
+    if (row == last_shift_row) return;
+    
+    // Send a single bit: HIGH for row 0, LOW for other rows
+    // This matches the working code's logic exactly
+    address_shift_bit(row == 0 ? 1 : 0);
+    
+    last_shift_row = row;
 }
 
 #endif
