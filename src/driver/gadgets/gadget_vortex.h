@@ -3,28 +3,28 @@
 
 #define SPIN_SYNC 1
 
-#define RGB_0_B1 12
-#define RGB_0_G1 9
-#define RGB_0_R1 6
-#define RGB_0_B2 5
-#define RGB_0_G2 8
-#define RGB_0_R2 7
+#define RGB_0_B1 7
+#define RGB_0_G1 27
+#define RGB_0_R1 11
+#define RGB_0_B2 10
+#define RGB_0_G2 9
+#define RGB_0_R2 8
 
-#define RGB_1_B1 21
-#define RGB_1_G1 13
-#define RGB_1_R1 20
-#define RGB_1_B2 26
-#define RGB_1_G2 19
-#define RGB_1_R2 16
+#define RGB_1_B1 6
+#define RGB_1_G1 5
+#define RGB_1_R1 12
+#define RGB_1_B2 20
+#define RGB_1_G2 13
+#define RGB_1_R2 19
 
-#define ADDR_CLK 4  //A
-#define ADDR_DAT 15  //C
-#define ADDR__EN 18   //B
+#define ADDR_CLK 22  //A
+#define ADDR_DAT 24  //C
+#define ADDR__EN 23   //B
 #define ADDR__EN_MASK (1<<ADDR__EN)
 
-#define RGB_BLANK 11
-#define RGB_CLOCK 23
-#define RGB_STROBE 27
+#define RGB_BLANK 18  //OE
+#define RGB_CLOCK 17  //CLK
+#define RGB_STROBE 4  //LAT
 #define RGB_BLANK_MASK (1<<RGB_BLANK)
 #define RGB_CLOCK_MASK (1<<RGB_CLOCK)
 #define RGB_STROBE_MASK (1<<RGB_STROBE)
