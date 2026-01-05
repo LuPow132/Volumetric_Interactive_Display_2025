@@ -18,8 +18,8 @@
 #define RGB_1_R2 16
 
 #define ADDR_CLK 4
-#define ADDR_DAT 18
-#define ADDR__EN 15
+#define ADDR_DAT 15
+#define ADDR__EN 18
 #define ADDR__EN_MASK (1<<ADDR__EN)
 
 #define RGB_BLANK 11
@@ -58,6 +58,6 @@ static const int matrix_init_out[] = {RGB_0_B1, RGB_0_G1, RGB_0_R1, RGB_0_B2, RG
 
 #define ROTATION_ZERO 286
 
-#define CLOCK_WAITS 5
+#define CLOCK_WAITS 7
 
 #endif
