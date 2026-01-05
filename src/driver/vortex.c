@@ -453,70 +453,36 @@ static void set_matrix_row(uint row) {
 #else
 
 // shift register address
-static int last_row = -1;
+static uint current_shift_row = 1;
 
 static inline void address_shift_left(const uint lsb) {
-    // 1. Enable Serial Input (Matches 'SetBits(bk_)' in Code 1)
-    gpio_set_bits(ADDR__EN_MASK);
-    tiny_wait(CLOCK_WAITS);
-
-    // 2. Set Data Bit (Matches 'SetBits(din_)' or 'ClearBits(din_)' logic)
-    if (lsb) {
-        gpio_set_bits(1<<ADDR_DAT);
-    } else {
-        gpio_clear_bits(1<<ADDR_DAT);
-    }
-    tiny_wait(CLOCK_WAITS);
-
-    // 3. Pulse Clock (Matches 'SetBits(dck_)' twice then 'ClearBits(dck_)')
-    gpio_set_bits(1<<ADDR_CLK);
-    gpio_set_bits(1<<ADDR_CLK);  // Longer clock time; tested with Pi3
     tiny_wait(CLOCK_WAITS * 2);
-    gpio_clear_bits(1<<ADDR_CLK);
-    tiny_wait(CLOCK_WAITS);
-
-    // 4. Disable Serial Input (Matches 'ClearBits(bk_)')
-    gpio_clear_bits(ADDR__EN_MASK);
-    
-    // Clean up - not in original but good practice
-    tiny_wait(CLOCK_WAITS);
+    gpio_set_bits((1<<ADDR_CLK) | (lsb<<ADDR_DAT));
+    tiny_wait(CLOCK_WAITS * 2);
+    gpio_clear_bits((1<<ADDR_CLK) | (1<<ADDR_DAT));
 }
 
 static void set_matrix_row(uint row) {
-    // Match the original logic: only shift if row changes
-    if (row == last_row) return;
-    
-    // The original code only does ONE shift operation per row change
-    // It sets din HIGH for row 0, LOW for all other rows
-    if (row == 0) {
-        address_shift_left(1);
-    } else {
-        address_shift_left(0);
-    }
-    
-    last_row = row;
-}
+    if (row < current_shift_row) {
+        int leading_zeros = PANEL_FIELD_HEIGHT - row - 1;
+        int flush = leading_zeros - current_shift_row;
 
-// Alternative implementation if you need sequential shifting
-// (use this ONLY if your hardware requires it)
-#ifdef USE_SEQUENTIAL_SHIFT
-static uint current_shift_row = 0;
-
-static void set_matrix_row_sequential(uint row) {
-    // Reset shift register if we need to go back
-    if (row == 0 && current_shift_row != 0) {
-        // Send a '1' followed by zeros to reset
+        for (int i = 0; i < flush; ++i) {
+            address_shift_left(0);
+        }
         address_shift_left(1);
+
         current_shift_row = 0;
     }
-    
-    // Shift zeros until we reach the target row
-    while (current_shift_row < row) {
+
+    for (; current_shift_row < row; ++current_shift_row) {
         address_shift_left(0);
-        current_shift_row++;
     }
+
 }
+
 #endif
+
 
 static bool killed = false;
 void sig_handler(int sig) {
