@@ -58,6 +58,6 @@ static const int matrix_init_out[] = {RGB_0_B1, RGB_0_G1, RGB_0_R1, RGB_0_B2, RG
 
 #define ROTATION_ZERO 286
 
-#define CLOCK_WAITS 7
+#define CLOCK_WAITS 5
 
 #endif
