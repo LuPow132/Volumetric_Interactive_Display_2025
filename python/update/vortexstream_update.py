@@ -10,7 +10,7 @@ import threading
 import time
 
 # --- CONFIGURATION ---
-HOST_IP = '192.168.1.38'  # Your Raspberry Pi IP
+HOST_IP = '192.168.1.40'  # Your Raspberry Pi IP
 PORT = 0x5658
 
 VOX_X = 128
@@ -139,8 +139,70 @@ def bresenham_3d(x0, y0, z0, x1, y1, z1):
     points.append((x1, y1, z1))
     return points
 
+def clip_line_to_bounds(p0, p1):
+    """
+    Clip a 3D line segment to the voxel bounds using Liang-Barsky algorithm.
+    Returns clipped endpoints or None if line is completely outside.
+    """
+    x0, y0, z0 = p0
+    x1, y1, z1 = p1
+    
+    dx = x1 - x0
+    dy = y1 - y0
+    dz = z1 - z0
+    
+    t_min = 0.0
+    t_max = 1.0
+    
+    # Check each axis
+    bounds = [
+        (-dx, x0, 0),           # Left (x = 0)
+        (dx, VOX_X - 1 - x0, 0),# Right (x = VOX_X-1)
+        (-dy, y0, 1),           # Bottom (y = 0)
+        (dy, VOX_Y - 1 - y0, 1),# Top (y = VOX_Y-1)
+        (-dz, z0, 2),           # Front (z = 0)
+        (dz, VOX_Z - 1 - z0, 2) # Back (z = VOX_Z-1)
+    ]
+    
+    for p, q, axis in bounds:
+        if p == 0:
+            # Line is parallel to this plane
+            if q < 0:
+                return None  # Line is outside
+        else:
+            t = q / p
+            if p < 0:
+                # Entering
+                t_min = max(t_min, t)
+            else:
+                # Exiting
+                t_max = min(t_max, t)
+            
+            if t_min > t_max:
+                return None  # Line is completely outside
+    
+    # Calculate clipped endpoints
+    clipped_x0 = int(x0 + t_min * dx)
+    clipped_y0 = int(y0 + t_min * dy)
+    clipped_z0 = int(z0 + t_min * dz)
+    
+    clipped_x1 = int(x0 + t_max * dx)
+    clipped_y1 = int(y0 + t_max * dy)
+    clipped_z1 = int(z0 + t_max * dz)
+    
+    # Clamp to ensure within bounds (floating point safety)
+    clipped_x0 = max(0, min(VOX_X - 1, clipped_x0))
+    clipped_y0 = max(0, min(VOX_Y - 1, clipped_y0))
+    clipped_z0 = max(0, min(VOX_Z - 1, clipped_z0))
+    
+    clipped_x1 = max(0, min(VOX_X - 1, clipped_x1))
+    clipped_y1 = max(0, min(VOX_Y - 1, clipped_y1))
+    clipped_z1 = max(0, min(VOX_Z - 1, clipped_z1))
+    
+    return (clipped_x0, clipped_y0, clipped_z0), (clipped_x1, clipped_y1, clipped_z1)
+
 def voxelize_object(obj):
-    """Convert mesh object to voxel points"""
+    """Convert mesh object to voxel points with smart edge clipping"""
     if obj.type != 'MESH':
         return []
     
@@ -159,29 +221,51 @@ def voxelize_object(obj):
     voxel_dict = {}  # Use dict to avoid duplicates
     
     try:
-        # Convert vertices to voxel space
-        voxel_verts = []
+        # First pass: Convert all vertices to voxel space (even if out of bounds)
+        # This is needed for edge calculations
+        all_voxel_verts = []
         for vert in mesh.vertices:
             world_pos = mat @ vert.co
             vox_x, vox_y, vox_z = world_to_voxel(world_pos)
-            if is_in_bounds(vox_x, vox_y, vox_z):
-                voxel_verts.append((vox_x, vox_y, vox_z))
-                voxel_dict[(vox_x, vox_y, vox_z)] = color
+            all_voxel_verts.append((vox_x, vox_y, vox_z))
         
-        # Draw edges with Bresenham for solid appearance
+        # Track which vertices are visible (within bounds)
+        visible_verts = set()
+        
+        # Add visible vertices
+        for idx, (vox_x, vox_y, vox_z) in enumerate(all_voxel_verts):
+            if is_in_bounds(vox_x, vox_y, vox_z):
+                voxel_dict[(vox_x, vox_y, vox_z)] = color
+                visible_verts.add(idx)
+        
+        # Second pass: Process edges with intelligent clipping
         for edge in mesh.edges:
             v0_idx, v1_idx = edge.vertices
             
-            world_pos0 = mat @ mesh.vertices[v0_idx].co
-            world_pos1 = mat @ mesh.vertices[v1_idx].co
+            vox0 = all_voxel_verts[v0_idx]
+            vox1 = all_voxel_verts[v1_idx]
             
-            vox0 = world_to_voxel(world_pos0)
-            vox1 = world_to_voxel(world_pos1)
+            v0_visible = v0_idx in visible_verts
+            v1_visible = v1_idx in visible_verts
             
-            if is_in_bounds(*vox0) and is_in_bounds(*vox1):
-                line_points = bresenham_3d(*vox0, *vox1)
-                for pt in line_points:
-                    voxel_dict[pt] = color
+            # Case 1: Both vertices visible - draw the line
+            if v0_visible and v1_visible:
+                if is_in_bounds(*vox0) and is_in_bounds(*vox1):
+                    line_points = bresenham_3d(*vox0, *vox1)
+                    for pt in line_points:
+                        voxel_dict[pt] = color
+            
+            # Case 2: At least one vertex visible or line passes through bounds
+            # Use line clipping to render partial edges
+            else:
+                clipped = clip_line_to_bounds(vox0, vox1)
+                if clipped is not None:
+                    clipped_p0, clipped_p1 = clipped
+                    # Draw the clipped portion
+                    line_points = bresenham_3d(*clipped_p0, *clipped_p1)
+                    for pt in line_points:
+                        if is_in_bounds(*pt):
+                            voxel_dict[pt] = color
         
         # Optional: Fill faces for solid appearance
         if SURFACE_THICKNESS > 1:
